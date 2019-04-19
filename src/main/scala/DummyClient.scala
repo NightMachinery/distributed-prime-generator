@@ -19,8 +19,7 @@ class DummyClient(name: String) extends Actor with ActorLogging {
   import DummyProtocol._
   import context.dispatcher //Used for Scheduler implicit execution context.
 
-  val masterSelection: ActorSelection =
-    context.actorSelection(s"akka.tcp://$masterSystemName@$masterIP:$masterPort/user/$masterName")
+  val masterSelection: ActorSelection = getMaster(context)
 
   var master: Option[ActorRef] = None
 
@@ -40,7 +39,7 @@ class DummyClient(name: String) extends Actor with ActorLogging {
   }
 
   override def preStart(): Unit = {
-    context.system.scheduler.schedule(2.seconds, 10.seconds, self, PukeClient)
+    context.system.scheduler.schedule(0.seconds, 10.seconds, self, PukeClient)
   }
 
   override def receive: Receive =
@@ -48,6 +47,9 @@ class DummyClient(name: String) extends Actor with ActorLogging {
       case PukeClient =>
         log.info(s"$name is trying to greet master ...")
         masterSelection ! Hello(name)
+      case HELL =>
+        log.info("HELL has arrived.")
+        masterSelection ! Hello("^soul-less^")
     }
 
 
