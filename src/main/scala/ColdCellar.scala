@@ -34,7 +34,7 @@ class ColdCellar extends Actor with ActorLogging {
 
   def persistWork(result: IntSet): Unit = {
     //TODO actually persist
-    if (!isDone(result.index)){
+    if (!isDone(result.index)) {
       storage.put(result.index, result.primes)
       log.info(s"Job ${result.index} has just been persisted.")
     }
@@ -55,9 +55,7 @@ class ColdCellar extends Actor with ActorLogging {
       case Some(innerSet) =>
         val offset = 2 + index * blockSize
         log.info(s"Beginning to output primes of index $index and offset $offset:")
-        for (num: Int <- innerSet) {
-          log.info((num + offset).toString)
-        }
+        innerSet.forEach { num => log.info((offset + BigInt(num)).toString) }
     }
   }
 

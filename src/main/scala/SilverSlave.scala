@@ -1,6 +1,8 @@
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorSelection, Cancellable, Props}
 import org.roaringbitmap.RoaringBitmap
 import GeneralConstants._
+
+import scala.concurrent.duration._
 
 object SilverSlave {
   def props(): Props = Props(new SilverSlave)
@@ -11,6 +13,13 @@ class SilverSlave extends Actor with ActorLogging {
 
   import SilverSlave._
   import Protocol11._
+  import context.dispatcher //Used for Scheduler implicit execution context.
+
+  val master: ActorSelection = getMaster(context)
+
+  var selfAbuse: Cancellable = createSelfAbuse()
+
+  def createSelfAbuse(): Cancellable = context.system.scheduler.schedule(0.seconds, 10.seconds, self, WorkRequest)
 
   def isPrime_BF(num: Int): Boolean = {
     if (num == 2)
@@ -30,7 +39,11 @@ class SilverSlave extends Actor with ActorLogging {
   }
 
   override def receive: Receive = {
+    case m@WorkRequest =>
+      master ! m
     case NicePig.DelegatedWork(index) =>
+      selfAbuse.cancel()
+      log.info(s"Work $index received.")
       if (index == 0) {
 
         val innerSet = new RoaringBitmap()
@@ -49,5 +62,7 @@ class SilverSlave extends Actor with ActorLogging {
       else {
         //TODO
       }
+
+      selfAbuse = createSelfAbuse()
   }
 }

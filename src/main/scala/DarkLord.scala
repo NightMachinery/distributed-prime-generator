@@ -26,25 +26,28 @@ class DarkLord extends Actor with ActorLogging {
   }
 
   def ensureBigWorkQueue(): Unit = {
-    if (potentialWorks.length < workQueueThreshold){
+    if (workQueue.length < workQueueThreshold) {
       rechargeWorkQueue()
     }
   }
 
   def pushWork(worker: ActorRef): Unit = {
     if (completionIndex == 0) {
-      createPig(0)
+      createPig(0, worker)
     }
     ensureBigWorkQueue()
-    createPig(workQueue.dequeue())
+    if (workQueue.nonEmpty)
+      createPig(workQueue.dequeue(), worker)
   }
 
-  def createPig(index: BigInt): Unit = {
+  def createPig(index: BigInt, worker: ActorRef): Unit = {
+    log.info(s"Pig created for work $index, worker ${worker}.")
     val pig = context.system.actorOf(NicePig.props(self, worker, index))
   }
 
   override def receive: Receive = {
     case WorkRequest =>
+      log.info("WorkRequest received.")
       addPotentialWorker(sender())
       self ! GiveWork
     case GiveWork =>
@@ -54,12 +57,12 @@ class DarkLord extends Actor with ActorLogging {
     case ColdCellar.ResultCompletionIndex(newIndex) =>
       completionIndex = newIndex
     case ColdCellar.ResultNewWorks(works) =>
-      for (work <- works){
-        if (!workQueue.contains(work) && workQueue.length < workQueueCapacity){
+      for (work <- works) {
+        if (!workQueue.contains(work) && workQueue.length < workQueueCapacity) {
           workQueue += work
         }
       }
-    case m @ Allseer.GetLatestPrimes | Allseer.GetPrimes =>
+    case m@(Allseer.GetLatestPrimes | Allseer.GetPrimes) =>
       cellar forward m
   }
 
