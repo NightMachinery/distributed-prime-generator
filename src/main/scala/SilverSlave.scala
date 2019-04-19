@@ -25,7 +25,7 @@ class SilverSlave extends Actor with ActorLogging {
       }
       i += 1
     }
-    
+
     result
   }
 

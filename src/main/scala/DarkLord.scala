@@ -1,6 +1,7 @@
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, ActorSystem, Props}
 
 import scala.collection.mutable
+import GeneralConstants._
 
 object DarkLord {
   def props(): Props = Props(new DarkLord)
@@ -14,14 +15,32 @@ class DarkLord extends Actor with ActorLogging {
   import DarkLord._
   import Protocol11._
 
+  val cellar: ActorSelection = getCellar(context)
+
   var completionIndex: BigInt = 0
   val potentialWorkers: mutable.Queue[ActorRef] = mutable.Queue[ActorRef]()
+  val workQueue: mutable.Queue[BigInt] = mutable.Queue[BigInt]()
+
+  def rechargeWorkQueue(): Unit = {
+    cellar ! ColdCellar.GetNewWorks(workQueueCapacity - workQueue.length)
+  }
+
+  def ensureBigWorkQueue(): Unit = {
+    if (potentialWorks.length < workQueueThreshold){
+      rechargeWorkQueue()
+    }
+  }
 
   def pushWork(worker: ActorRef): Unit = {
-    if (completionIndex==0){
-      val pig = context.system.actorOf(NicePig.props(self,worker,0))
+    if (completionIndex == 0) {
+      createPig(0)
     }
+    ensureBigWorkQueue()
+    createPig(workQueue.dequeue())
+  }
 
+  def createPig(index: BigInt): Unit = {
+    val pig = context.system.actorOf(NicePig.props(self, worker, index))
   }
 
   override def receive: Receive = {
@@ -34,6 +53,14 @@ class DarkLord extends Actor with ActorLogging {
       }
     case ColdCellar.ResultCompletionIndex(newIndex) =>
       completionIndex = newIndex
+    case ColdCellar.ResultNewWorks(works) =>
+      for (work <- works){
+        if (!workQueue.contains(work) && workQueue.length < workQueueCapacity){
+          workQueue += work
+        }
+      }
+    case m @ Allseer.GetLatestPrimes | Allseer.GetPrimes =>
+      cellar forward m
   }
 
   def addPotentialWorker(worker: ActorRef): Unit = {

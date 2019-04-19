@@ -16,4 +16,8 @@ object GeneralConstants {
   val config: Config = ConfigFactory.load()
 
   val blockSize: Int = 100
+
+  val workQueueCapacity = 10
+  val workQueueThreshold: Int = workQueueCapacity / 3
+
 }
