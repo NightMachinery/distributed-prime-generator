@@ -1,5 +1,6 @@
 import akka.actor.{ActorContext, ActorSelection}
 import com.typesafe.config.{Config, ConfigFactory}
+import scala.concurrent.duration._
 
 object GeneralConstants {
   val masterSystemName = "MasterSys"
@@ -19,5 +20,8 @@ object GeneralConstants {
 
   val workQueueCapacity = 10
   val workQueueThreshold: Int = workQueueCapacity / 3
+
+  val pigTimeout: FiniteDuration = 2 hours //This timeout is not heartbeat-modulated, so it's best to set it big. We are using Akka for heartbeating.
+  val slaveTimeout: FiniteDuration = 10 minutes
 
 }

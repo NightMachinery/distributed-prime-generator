@@ -43,6 +43,7 @@ class DarkLord extends Actor with ActorLogging {
   def createPig(index: BigInt, worker: ActorRef): Unit = {
     log.info(s"Pig created for work $index, worker ${worker}.")
     val pig = context.system.actorOf(NicePig.props(self, worker, index))
+    pig ! NicePig.PushWork
   }
 
   override def receive: Receive = {

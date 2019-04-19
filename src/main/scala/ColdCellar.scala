@@ -1,4 +1,5 @@
 import GeneralConstants._
+import Protocol11.{GiveFrame, ResultFrame}
 import akka.actor.{Actor, ActorLogging, ActorSelection, Props}
 import org.roaringbitmap.RoaringBitmap
 
@@ -55,7 +56,7 @@ class ColdCellar extends Actor with ActorLogging {
       case Some(innerSet) =>
         val offset = 2 + index * blockSize
         log.info(s"Beginning to output primes of index $index and offset $offset:")
-        innerSet.forEach { num => log.info((offset + BigInt(num)).toString) }
+        innerSet.forEach { num => log.info(s"${(offset + BigInt(num)).toString} is prime!") }
     }
   }
 
@@ -91,6 +92,9 @@ class ColdCellar extends Actor with ActorLogging {
         outPrimes(lastIndex)
       else
         log.info("lastIndex is less than zero, don't attempt to get latest primes.")
+    case GiveFrame(index) =>
+      log.info(s"Frame $index requested by ${sender()}.")
+      sender() ! ResultFrame(loadWork(index))
   }
 
   def updateCompletionIndex(newIndex: BigInt): Unit = {
