@@ -1,5 +1,5 @@
 import akka.actor.ActorSystem
-import GeneralConstants._
+import SharedSpace._
 
 object DummyMasterStarter  extends App{
 

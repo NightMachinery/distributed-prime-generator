@@ -1,4 +1,4 @@
-import GeneralConstants._
+import SharedSpace._
 import Protocol11.GiveFrame
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, PoisonPill, Props, Terminated}
 import org.roaringbitmap.RoaringBitmap
@@ -43,7 +43,8 @@ class NicePig(master: ActorRef, worker: ActorRef, index: BigInt) extends Actor w
     case Terminated(`worker`) =>
       log.info(s"Terminated: Work $index, Pig $self, Worker $worker")
       self ! PoisonPill
-    case m@GiveFrame =>
+    case m@GiveFrame(index) =>
+      log.info(s"Frame $index Requested: Work $index, Pig $self, Worker $worker")
       cellar forward m
   }
 }

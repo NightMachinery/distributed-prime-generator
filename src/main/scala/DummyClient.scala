@@ -1,6 +1,6 @@
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, Props}
-import GeneralConstants._
+import SharedSpace._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

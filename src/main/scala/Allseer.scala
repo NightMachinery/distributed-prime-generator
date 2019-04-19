@@ -1,4 +1,4 @@
-import GeneralConstants._
+import SharedSpace._
 import akka.actor.{Actor, ActorLogging, ActorSelection, Cancellable, Props}
 
 import scala.concurrent.duration._
@@ -14,6 +14,7 @@ object Allseer {
   final case class AbuseMe(interval: FiniteDuration)
 
   final case object CancelAbuse
+
 }
 
 class Allseer extends Actor with ActorLogging {
@@ -33,6 +34,7 @@ class Allseer extends Actor with ActorLogging {
     selfAbuse match {
       case Some(abuse) =>
         abuse.cancel()
+      case _ =>
     }
   }
 
@@ -44,6 +46,7 @@ class Allseer extends Actor with ActorLogging {
     case CancelAbuse =>
       cancelAbuse()
     case any: Any =>
+      log.info(s"Forwarding: $any")
       master forward any
   }
 }

@@ -1,4 +1,4 @@
-import GeneralConstants._
+import SharedSpace._
 import akka.actor.ActorSystem
 
 object InitDarkness extends App{

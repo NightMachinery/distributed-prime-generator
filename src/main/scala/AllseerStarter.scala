@@ -1,5 +1,5 @@
 import akka.actor.ActorSystem
-import GeneralConstants._
+import SharedSpace._
 import scala.concurrent.duration._
 
 object AllseerStarter extends App {
@@ -8,6 +8,6 @@ object AllseerStarter extends App {
 
   val system = ActorSystem("AllseerSys", config.getConfig("localApp").withFallback(config))
   val allseer = system.actorOf(Allseer.props(), "allseer")
-  allseer ! AbuseMe(1 minute)
-
+  allseer ! AbuseMe(30 seconds)
+  allseer ! GetLatestPrimes
 }

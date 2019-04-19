@@ -1,7 +1,7 @@
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, ActorSystem, Props}
 
 import scala.collection.mutable
-import GeneralConstants._
+import SharedSpace._
 
 object DarkLord {
   def props(): Props = Props(new DarkLord)
@@ -64,6 +64,7 @@ class DarkLord extends Actor with ActorLogging {
         }
       }
     case m@(Allseer.GetLatestPrimes | Allseer.GetPrimes) =>
+      //log.info(s"Allseer ${sender()} sent $m")
       cellar forward m
   }
 

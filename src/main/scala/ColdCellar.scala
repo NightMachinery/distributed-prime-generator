@@ -1,4 +1,4 @@
-import GeneralConstants._
+import SharedSpace._
 import Protocol11.{GiveFrame, ResultFrame}
 import akka.actor.{Actor, ActorLogging, ActorSelection, Props}
 import org.roaringbitmap.RoaringBitmap
@@ -42,7 +42,12 @@ class ColdCellar extends Actor with ActorLogging {
   }
 
   //TODO loadWork needs to load from disk.
-  def loadWork(index: BigInt): Option[RoaringBitmap] = storage.get(index)
+  def loadWork(index: BigInt): Option[RoaringBitmap] = {
+//    if (index ==1){
+//      log.info("shit")
+//    }
+    storage.get(index)
+  }
 
   def isDone(index: BigInt): Boolean = {
     //TODO
@@ -54,7 +59,7 @@ class ColdCellar extends Actor with ActorLogging {
       case None =>
         log.info("These primes have not yet been calculated.")
       case Some(innerSet) =>
-        val offset = 2 + index * blockSize
+        val offset = getOffset(index)
         log.info(s"Beginning to output primes of index $index and offset $offset:")
         innerSet.forEach { num => log.info(s"${(offset + BigInt(num)).toString} is prime!") }
     }

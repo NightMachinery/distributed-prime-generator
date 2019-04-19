@@ -1,6 +1,7 @@
+import NicePig.FinishedWork
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection, Cancellable, PoisonPill, Props}
 import org.roaringbitmap.RoaringBitmap
-import GeneralConstants._
+import SharedSpace._
 
 import scala.concurrent.duration._
 
@@ -21,9 +22,11 @@ class SilverSlave extends Actor with ActorLogging {
 
   // State variables!
   var pig: Option[ActorRef] = None
-  var processedIndex: BigInt = 0
+  var processingIndex: BigInt = 0
   var targetIndex: BigInt = 0
   var workingSet: RoaringBitmap = new RoaringBitmap()
+  var offset: BigInt = 0
+  var lastTarget: BigInt = 0
 
   //State end!
 
@@ -60,15 +63,24 @@ class SilverSlave extends Actor with ActorLogging {
     selfAbuse = createSelfAbuse(interval, msg)
   }
 
+  def messagePig(msg: Any): Unit = {
+    pig match {
+      case None =>
+        log.error("Trying to message non-existent pig!")
+      case Some(p) =>
+        p ! msg
+    }
+  }
+
   def askPigForFrame(): Unit = {
     recreateAbuse(slaveTimeout, Timeout)
-    pig ! GiveFrame(processedIndex)
+    messagePig(GiveFrame(processingIndex))
   }
 
   def cleanState(): Unit = {
     killMyPig()
-    targetIndex = 0
-    processedIndex = 0
+    targetIndex = 0 //Redundant
+    processingIndex = 0
     workingSet = new RoaringBitmap()
   }
 
@@ -79,9 +91,41 @@ class SilverSlave extends Actor with ActorLogging {
   }
 
   def processFrame(frameData: RoaringBitmap): Unit = {
+    val processingOffset = getOffset(processingIndex)
+    log.info(s"Processing frame with offset $processingOffset")
     frameData.forEach { num =>
-      
+      val realNum = processingOffset + BigInt(num)
+      val rem = offset.%(realNum)
+      var i: BigInt = 0
+      if (rem != 0) {
+        i = realNum - rem
+      }
+      else {
+        workingSet.remove(0)
+        i = realNum
+      }
+
+      while (i < blockSize) {
+        workingSet.remove(i.toInt) //Note that i < blockSize ;)
+        i += realNum
+      }
     }
+    if (((processingOffset + blockSize - 1) pow 2) >= lastTarget) {
+      messagePig(FinishedWork(IntSet(targetIndex, workingSet)))
+      //Returning to innocence without killing the big
+      pig = None
+      recreateAbuse()
+    }
+    else {
+      processingIndex += 1
+//      if (targetIndex == 1 && processingIndex == 1)
+//        log.error("Bug detected at 97397397.")
+      askPigForFrame()
+    }
+  }
+
+  def populateWSet(): Unit = {
+    workingSet.add(0L, blockSize - 1)
   }
 
   override def receive: Receive = {
@@ -112,6 +156,9 @@ class SilverSlave extends Actor with ActorLogging {
         cleanState()
         pig = Some(sender())
         targetIndex = index
+        offset = getOffset(targetIndex)
+        populateWSet()
+        lastTarget = offset + blockSize - 1
         askPigForFrame()
       }
     case ResultFrame(frame) =>
@@ -132,6 +179,7 @@ class SilverSlave extends Actor with ActorLogging {
       case Some(p) =>
         p ! PoisonPill
         pig = None
+      case _ =>
     }
   }
 
