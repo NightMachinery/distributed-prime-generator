@@ -1,0 +1,2 @@
+FROM bd971-base:latest
+CMD ["sbt", "runMain SilverSlaveStarter"]

@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 //TODO Load constants from Akka config.
 object SharedSpace {
   val masterSystemName = "MasterSys"
-  val masterIP = "127.0.0.1"
+  val masterIP = "192.168.1.75"
   val masterPort = 2552
   val masterName = "theMaster"
 
@@ -20,7 +20,7 @@ object SharedSpace {
 
   val blockSize: Int = 100
 
-  val workQueueCapacity = 15
+  val workQueueCapacity = 30 //Should be like 10x of workerCount? Small values are advisable at first, but then n^2 grows so much that it doesn't matter. Small values create more duplicate jobs even at great network conditions.
   val workQueueThreshold: Int = workQueueCapacity / 3
 
   val pigTimeout: FiniteDuration = 2 hours //This timeout is not heartbeat-modulated, so it's best to set it big. We are using Akka for heartbeating.

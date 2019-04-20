@@ -51,7 +51,7 @@ class ColdCellar extends Actor with ActorLogging {
     kryo.register(classOf[java.math.BigInteger])
     if (exists(ciPath)) {
       completionIndex = read(ciPath, classOf[BigInteger])
-      lastIndex = completionIndex //Yeah:))))
+      lastIndex = completionIndex - 1 //Yeah:))))
       tellMasterCI()
       // If we cached stuff, we'd have to reload the cache here perhaps? :))
     }
