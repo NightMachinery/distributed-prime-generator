@@ -1,4 +1,5 @@
 import java.io.{FileInputStream, FileOutputStream}
+import java.math.BigInteger
 
 import SharedSpace._
 import Protocol11.{GiveFrame, ResultFrame}
@@ -29,6 +30,8 @@ class ColdCellar extends Actor with ActorLogging {
   import ColdCellar._
 
   val wd: Path = home / 'ColdCellar / s"blockSize $blockSize"
+  mkdir(wd)
+
   val ciPath: Path = wd / 'completionIndex
 
   val master: ActorSelection = getMaster(context)
@@ -45,14 +48,22 @@ class ColdCellar extends Actor with ActorLogging {
 
   override def preStart(): Unit = {
     kryo.register(classOf[RoaringBitmap], new RoaringSerializer())
+    kryo.register(classOf[java.math.BigInteger])
     if (exists(ciPath)) {
-      completionIndex = read(ciPath, classOf[BigInt])
+      completionIndex = read(ciPath, classOf[BigInteger])
+      lastIndex = completionIndex //Yeah:))))
       tellMasterCI()
       // If we cached stuff, we'd have to reload the cache here perhaps? :))
     }
   }
 
-  def read[T](path: Path, classType: Class[T]): T = kryo.readObject(new Input(new FileInputStream(path.toIO)), classType)
+  def read[T](path: Path, classType: Class[T]): T = {
+    val inp = new Input(new FileInputStream(path.toIO))
+    val res = kryo.readObject(inp, classType)
+    inp.close()
+    res
+  }
+
 
   def persistWork(result: IntSet): Unit = {
     if (!isDone(result.index)) {
@@ -60,6 +71,8 @@ class ColdCellar extends Actor with ActorLogging {
       try {
         atomicWrite(result.primes, getPath(result.index))
         log.info(s"Job ${result.index} has just been persisted.")
+        updateCompletionIndex(result.index + 1)
+        updateLastIndex(result.index)
       }
       catch {
         case e: Throwable =>
@@ -72,8 +85,11 @@ class ColdCellar extends Actor with ActorLogging {
   def atomicWrite[T](sth: T, path: Path): Unit = {
     val outPath = Path(path + ".tmp")
     rm ! outPath //idk if this is needed
-    kryo.writeObject(new Output(new FileOutputStream(outPath.toIO)), sth)
-    mv(outPath, path)
+    val out = new Output(new FileOutputStream(outPath.toIO))
+    kryo.writeObject(out, sth)
+    out.close()
+    //rm ! path
+    mv.over(outPath, path)
   }
 
   //TODO loadWork needs to load from disk.
@@ -123,8 +139,6 @@ class ColdCellar extends Actor with ActorLogging {
       sender ! ResultCompletionIndex(completionIndex)
     case NicePig.FinishedWork(result) =>
       persistWork(result)
-      updateCompletionIndex(result.index + 1)
-      updateLastIndex(result.index)
     case GetNewWorks(howMany) =>
       val works = mutable.MutableList.empty[BigInt]
       var i = 0
@@ -155,8 +169,9 @@ class ColdCellar extends Actor with ActorLogging {
     if (newIndex <= completionIndex) {
       return
     }
+    log.info(s"Attempting to update completionIndex to $newIndex")
     completionIndex = newIndex
-    atomicWrite(completionIndex, ciPath)
+    atomicWrite(completionIndex.bigInteger, ciPath)
     tellMasterCI()
   }
 }
