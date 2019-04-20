@@ -1,7 +1,12 @@
+import java.io.{FileInputStream, FileOutputStream}
+
 import SharedSpace._
 import Protocol11.{GiveFrame, ResultFrame}
 import akka.actor.{Actor, ActorLogging, ActorSelection, Props}
 import org.roaringbitmap.RoaringBitmap
+import ammonite.ops._
+import com.esotericsoftware.kryo.Kryo
+import com.esotericsoftware.kryo.io.{Input, Output}
 
 import scala.collection.mutable
 
@@ -23,6 +28,9 @@ class ColdCellar extends Actor with ActorLogging {
 
   import ColdCellar._
 
+  val wd: Path = home / 'ColdCellar / s"blockSize $blockSize"
+  val ciPath: Path = wd / 'completionIndex
+
   val master: ActorSelection = getMaster(context)
 
   // The completion index points to the lowest undone job.
@@ -33,25 +41,64 @@ class ColdCellar extends Actor with ActorLogging {
 
   val storage = mutable.HashMap.empty[BigInt, RoaringBitmap]
 
-  def persistWork(result: IntSet): Unit = {
-    //TODO actually persist
-    if (!isDone(result.index)) {
-      storage.put(result.index, result.primes)
-      log.info(s"Job ${result.index} has just been persisted.")
+  val kryo = new Kryo()
+
+  override def preStart(): Unit = {
+    kryo.register(classOf[RoaringBitmap], new RoaringSerializer())
+    if (exists(ciPath)) {
+      completionIndex = read(ciPath, classOf[BigInt])
+      tellMasterCI()
+      // If we cached stuff, we'd have to reload the cache here perhaps? :))
     }
+  }
+
+  def read[T](path: Path, classType: Class[T]): T = kryo.readObject(new Input(new FileInputStream(path.toIO)), classType)
+
+  def persistWork(result: IntSet): Unit = {
+    if (!isDone(result.index)) {
+      //storage.put(result.index, result.primes)
+      try {
+        atomicWrite(result.primes, getPath(result.index))
+        log.info(s"Job ${result.index} has just been persisted.")
+      }
+      catch {
+        case e: Throwable =>
+          log.error(s"Could not persist work ${result.index}. Exception: $e")
+        // Enough?
+      }
+    }
+  }
+
+  def atomicWrite[T](sth: T, path: Path): Unit = {
+    val outPath = Path(path + ".tmp")
+    rm ! outPath //idk if this is needed
+    kryo.writeObject(new Output(new FileOutputStream(outPath.toIO)), sth)
+    mv(outPath, path)
   }
 
   //TODO loadWork needs to load from disk.
   def loadWork(index: BigInt): Option[RoaringBitmap] = {
-//    if (index ==1){
-//      log.info("shit")
-//    }
-    storage.get(index)
+    //    if (index ==1){
+    //      log.info("shit")
+    //    }
+    try {
+      Some(kryo.readObject(new Input(new FileInputStream(getPath(index).toIO)), classOf[RoaringBitmap]))
+    } catch {
+      case e: Throwable =>
+        log.warning(s"Could not load work $index. Exception: $e")
+        None
+    }
+
+
+
+    //storage.get(index)
   }
 
+  def getPath(index: BigInt): Path = wd / index.toString()
+
   def isDone(index: BigInt): Boolean = {
-    //TODO
-    storage.contains(index)
+    exists ! getPath(index)
+    //    storage.contains(index)
   }
 
   def outPrimes(index: BigInt): Unit = {
@@ -102,12 +149,14 @@ class ColdCellar extends Actor with ActorLogging {
       sender() ! ResultFrame(loadWork(index))
   }
 
+  def tellMasterCI(): Unit = master ! ResultCompletionIndex(completionIndex)
+
   def updateCompletionIndex(newIndex: BigInt): Unit = {
     if (newIndex <= completionIndex) {
       return
     }
     completionIndex = newIndex
-    //TODO Persist new index
-    master ! ResultCompletionIndex(completionIndex)
+    atomicWrite(completionIndex, ciPath)
+    tellMasterCI()
   }
 }

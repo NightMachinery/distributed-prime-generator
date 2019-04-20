@@ -14,3 +14,5 @@ libraryDependencies += "org.roaringbitmap" % "RoaringBitmap" % "0.8.1"
 
 //libraryDependencies += "com.twitter" %% "chill" % "0.9.1"
 libraryDependencies += "com.esotericsoftware" % "kryo" % "5.0.0-RC4"
+
+libraryDependencies += "com.lihaoyi" %% "ammonite-ops" % "1.6.6"

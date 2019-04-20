@@ -8,6 +8,6 @@ object AllseerStarter extends App {
 
   val system = ActorSystem("AllseerSys", config.getConfig("localApp").withFallback(config))
   val allseer = system.actorOf(Allseer.props(), "allseer")
-  allseer ! AbuseMe(30 seconds)
+  allseer ! AbuseMe(10 seconds)
   allseer ! GetLatestPrimes
 }

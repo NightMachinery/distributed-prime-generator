@@ -20,7 +20,7 @@ object SharedSpace {
 
   val blockSize: Int = 100
 
-  val workQueueCapacity = 10
+  val workQueueCapacity = 15
   val workQueueThreshold: Int = workQueueCapacity / 3
 
   val pigTimeout: FiniteDuration = 2 hours //This timeout is not heartbeat-modulated, so it's best to set it big. We are using Akka for heartbeating.

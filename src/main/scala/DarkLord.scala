@@ -31,6 +31,8 @@ class DarkLord extends Actor with ActorLogging {
     }
   }
 
+  override def preStart(): Unit = cellar ! ColdCellar.GetCompletionIndex
+
   def pushWork(worker: ActorRef): Unit = {
     if (completionIndex == 0) {
       createPig(0, worker)
